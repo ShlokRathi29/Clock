@@ -9,7 +9,7 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 
-/* 🔥 BACKGROUND VARIABLE */
+/* BACKGROUND VARIABLE */
 :root {
   --bg-image: url("image1.jpg");
 }
@@ -19,7 +19,6 @@ html, body {
   height:100%;
   overflow:hidden;
   font-family: monospace;
-
   background: var(--bg-image) center/cover no-repeat;
 }
 
@@ -83,8 +82,8 @@ body::before {
   color:#888;
 }
 
-/* Button */
-#fullscreenBtn, #toggleBg {
+/* Buttons */
+#fullscreenBtn, #toggleBg, #wakeBtn {
   position:fixed;
   top:10px;
   background:#000;
@@ -97,6 +96,7 @@ body::before {
 
 #fullscreenBtn { left:10px; }
 #toggleBg { left:80px; }
+#wakeBtn { left:140px; }
 
 </style>
 
@@ -104,7 +104,7 @@ body::before {
 
 <body>
 
-<button id="fullscreenBtn">FULL</button> <button id="toggleBg">BG</button>
+<button id="fullscreenBtn">FULL</button> <button id="toggleBg">BG</button> <button id="wakeBtn">WAKE</button>
 
 <div id="stage">
   <div id="time-row">
@@ -119,6 +119,7 @@ body::before {
 </div>
 
 <script>
+/* CLOCK */
 var hh = document.getElementById('hh');
 var mm = document.getElementById('mm');
 var ss = document.getElementById('ss');
@@ -161,7 +162,7 @@ function tick(){
 tick();
 setInterval(tick,1000);
 
-/* 🔥 BACKGROUND TOGGLE LOGIC */
+/* BACKGROUND TOGGLE */
 let current = 1;
 document.getElementById("toggleBg").onclick = () => {
   current = current === 1 ? 2 : 1;
@@ -171,7 +172,7 @@ document.getElementById("toggleBg").onclick = () => {
   );
 };
 
-/* Fullscreen */
+/* FULLSCREEN */
 document.getElementById("fullscreenBtn").onclick = () => {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen();
@@ -179,6 +180,53 @@ document.getElementById("fullscreenBtn").onclick = () => {
     document.exitFullscreen();
   }
 };
+
+/* WAKE LOCK (FIXED VERSION) */
+let wakeLock = null;
+let wakeEnabled = false;
+const wakeBtn = document.getElementById("wakeBtn");
+
+async function requestWakeLock() {
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    console.log('Wake Lock active');
+
+    wakeBtn.textContent = "AWAKE";
+
+    wakeLock.addEventListener('release', () => {
+      console.log('Wake Lock released');
+
+      if (wakeEnabled) {
+        requestWakeLock(); // auto re-enable
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+/* Toggle wake */
+wakeBtn.onclick = async () => {
+  wakeEnabled = !wakeEnabled;
+
+  if (wakeEnabled) {
+    await requestWakeLock();
+  } else {
+    if (wakeLock) {
+      await wakeLock.release();
+      wakeLock = null;
+    }
+    wakeBtn.textContent = "WAKE";
+  }
+};
+
+/* Re-enable when tab is visible again */
+document.addEventListener("visibilitychange", async () => {
+  if (wakeEnabled && document.visibilityState === "visible") {
+    await requestWakeLock();
+  }
+});
 </script>
 
 </body>
